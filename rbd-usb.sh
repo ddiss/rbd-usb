@@ -39,12 +39,6 @@ if [ -f /sys/class/leds/cubietruck:blue:usr/trigger ]; then
 	echo default-on > /sys/class/leds/cubietruck:blue:usr/trigger
 fi
 
-# for i in rbd sunxi configfs libcomposite usb_f_mass_storage; do
-for i in rbd sunxi configfs; do
-	modprobe $i || _fatal "failed to load $i kernel module"
-done
-
-
 cat /proc/mounts | grep configfs &> /dev/null
 if [ $? -ne 0 ]; then
 	mount -t configfs configfs /sys/kernel/config \
