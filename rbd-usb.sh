@@ -3,8 +3,40 @@
 # import common functions and rbd-usb.conf config
 . /usr/lib/rbd-usb.env
 
-# ignore ifup events for loopback
-[ "$net_if" != "lo" ] || exit 0
+# parse start/stop parameter
+script_start=""
+script_stop=""
+# network interface name is an optional parameter
+net_dev=""
+while [[ $# -gt 0 ]]; do
+        param="$1"
+
+        case $param in
+        --net-dev)
+                net_dev="$2"
+                shift
+                ;;
+        --start)
+		[ -z "$script_stop" ] || _fatal "invalid param: $param"
+                script_start="1"
+                ;;
+        --stop)
+		[ -z "$script_start" ] || _fatal "invalid param: $param"
+                script_stop="1"
+                ;;
+        *)
+                _fatal "unknown parameter $param"
+                ;;
+        esac
+        shift
+done
+
+if [ -z "$script_start" ] && [ -z "$script_stop" ]; then
+	_fatal "invalid parameters: either --stop or --start must be provided"
+fi
+
+# ignore events for loopback
+[ "$net_dev" == "lo" ] && exit 0
 
 # turn off all LEDs except for blue
 if [ -f /sys/class/leds/cubietruck:blue:usr/trigger ]; then
