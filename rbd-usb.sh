@@ -1,32 +1,7 @@
 #!/bin/bash
 
-# XXX Fill in the following...
-# e.g. MON_ADDR="10.10.24.24:6789"
-MON_ADDR=""
-# e.g. AUTH_NAME="admin"
-AUTH_NAME=""
-# e.g. AUTH_SECRET="qwoifuwqoeihjfloiqqweRWERf/XZCV3429589=="
-AUTH_SECRET=""
-# e.g. CEPH_POOL="rbd"
-CEPH_POOL=""
-# e.g. CEPH_IMG="my_rbd_usb_img"
-CEPH_IMG=""
-# e.g. CEPH_DEV="/dev/rbd0"
-CEPH_DEV=""
-# XXX "pretty" device path relies on udev namer
-#CEPH_DEV="/dev/rbd/$CEPH_POOL/$CEPH_IMG"
-
-_fatal() {
-	if [ -f /sys/class/leds/cubietruck:orange:usr/trigger ]; then
-		# flag error via orange LED
-		echo default-on > /sys/class/leds/cubietruck:orange:usr/trigger
-		echo none > /sys/class/leds/cubietruck:blue:usr/trigger
-	fi
-	echo "FATAL: $*"
-	exit 1
-}
-
-net_if=$1
+# import common functions and rbd-usb.conf config
+. /usr/lib/rbd-usb.env
 
 # ignore ifup events for loopback
 [ "$net_if" != "lo" ] || exit 0
