@@ -68,7 +68,9 @@ echo -n "$MON_ADDRESS name=${CEPH_USER},secret=$key \
 
 udevadm settle || _fatal "udev settle failed"
 
-[ -b $CEPH_DEV ] || _fatal "$CEPH_DEV block device did not appear"
+# assume rbdnamer udev rule sets up the /dev/rbd/$pool/$img symlink
+ceph_rbd_dev=/dev/rbd/${CEPH_RBD_POOL}/${CEPH_RBD_IMG}
+[ -b $ceph_rbd_dev ] || _fatal "$ceph_rbd_dev block device did not appear"
 
 cd /sys/kernel/config/usb_gadget/ || _fatal "usb_gadget not present"
 
@@ -92,8 +94,8 @@ echo 0 > functions/mass_storage.$N/lun.0/cdrom
 echo 0 > functions/mass_storage.$N/lun.0/ro
 echo 0 > functions/mass_storage.$N/lun.0/nofua
 
-echo "$CEPH_DEV" > functions/mass_storage.$N/lun.0/file \
-	|| _fatal "failed to use $CEPH_DEV as LUN backing device"
+echo "$ceph_rbd_dev" > functions/mass_storage.$N/lun.0/file \
+	|| _fatal "failed to use $ceph_rbd_dev as LUN backing device"
 
 C=1
 mkdir -p configs/c.$C/strings/0x409 \
