@@ -20,7 +20,19 @@ if [ $? -ne 0 ]; then
 		|| _fatal "failed to mount configfs"
 fi
 
-echo -n "$MON_ADDR name=${AUTH_NAME},secret=${AUTH_SECRET} ${CEPH_POOL} $CEPH_IMG -" > /sys/bus/rbd/add
+_ini_parse "/etc/ceph/keyring" "client.${CEPH_USER}"
+_keyring_parse ${CEPH_USER}
+if [ -z "$CEPH_MON_NAME" ]; then
+	# pass global section and use mon_host
+	_ini_parse "/etc/ceph/ceph.conf" "global"
+	MON_ADDRESS="$mon_host"
+else
+	_ini_parse "/etc/ceph/ceph.conf" "mon.${CEPH_MON_NAME}"
+	MON_ADDRESS="$mon_addr"
+fi
+
+echo -n "$MON_ADDRESS name=${CEPH_USER},secret=$key \
+	 $CEPH_RBD_POOL $CEPH_RBD_IMG -" > /sys/bus/rbd/add
 
 udevadm settle || _fatal "udev settle failed"
 
