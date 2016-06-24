@@ -1,7 +1,113 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # import common functions and rbd-usb.conf config
 . /usr/lib/rbd-usb.env
+
+function _tcm_iblock_create() {
+	local bstore=$1
+	local iblock_dev=$2
+	local unit_serial=$3
+
+	modprobe target_core_mod
+
+	cd /sys/kernel/config/target/core/ || _reboot "failed TCM configfs entry"
+
+	mkdir -p iblock_0/${bstore} || _reboot "failed to create iblock node"
+	echo "udev_path=${iblock_dev}" > iblock_0/${bstore}/control \
+		|| _reboot "failed to provision iblock device"
+	echo "${unit_serial}" > iblock_0/${bstore}/wwn/vpd_unit_serial \
+		|| _reboot "failed to set serial number"
+
+	echo "1" > iblock_0/${bstore}/enable || _reboot "failed to enable iblock"
+	# needs to be done after enable, as target_configure_device() resets it
+	#echo "openSUSE" > iblock_0/${bstore}/wwn/vendor_id \
+	#	|| _reboot "failed to set vendorid"
+}
+
+function _tcm_iblock_remove() {
+	local bstore=$1
+
+	cd /sys/kernel/config/target/core/ || _reboot "failed TCM configfs entry"
+
+	# `echo "0" > iblock_0/${bstore}/enable` not supported (or needed)
+
+	rmdir iblock_0/${bstore} || _reboot "failed to delete iblock node"
+	rmdir iblock_0 || _reboot "failed to delete iblock node"
+}
+
+function _tcm_usb_expose() {
+	local bstore=$1
+	local vendor_id=$2
+	local product_id=$3
+
+	modprobe usb_f_tcm
+
+	cd /sys/kernel/config/usb_gadget \
+		|| _reboot "failed USB gadget configfs entry"
+	mkdir tcm || _reboot "failed USB gadget configfs I/O"
+	cd tcm
+	mkdir functions/tcm.0 || _reboot "failed USB gadget configfs I/O"
+
+	cd /sys/kernel/config/target/ || _reboot "failed TCM configfs entry"
+	mkdir usb_gadget || _reboot "failed TCM gadget configfs I/O"
+	cd usb_gadget
+	mkdir naa.0123456789abcdef || _reboot "failed TCM gadget configfs I/O"
+	cd naa.0123456789abcdef
+	mkdir tpgt_1 || _reboot "failed TCM gadget configfs I/O"
+	cd tpgt_1
+	echo naa.01234567890abcdef > nexus \
+		|| _reboot "failed TCM gadget configfs I/O"
+	echo 1 > enable || _reboot "failed TCM gadget configfs I/O"
+
+	mkdir lun/lun_0 || _reboot "failed to provision TCM gadget LUN"
+
+	ln -s /sys/kernel/config/target/core/iblock_0/${bstore} \
+		lun/lun_0/${bstore} || _reboot "TCM gadget LUN symlink failed"
+
+	cd /sys/kernel/config/usb_gadget/tcm \
+		|| _reboot "failed USB gadget configfs entry"
+	mkdir configs/c.1 || _reboot "failed USB gadget configfs I/O"
+	ln -s functions/tcm.0 configs/c.1
+	echo "$vendor_id" > idVendor
+	echo "$product_id" > idProduct
+
+	# FIXME: check for /sys/class/udc entry
+	ls /sys/class/udc > UDC
+}
+
+function _tcm_usb_unexpose() {
+	local bstore=$1
+
+	cd /sys/kernel/config/usb_gadget/tcm \
+		|| _reboot "failed USB gadget configfs entry"
+	rm configs/c.1/tcm.0 || _reboot "failed USB gadget configfs entry"
+	rmdir configs/c.1 || _reboot "failed USB gadget configfs entry"
+
+	# FIXME naa. as param
+	cd /sys/kernel/config/target/usb_gadget/naa.0123456789abcdef/tpgt_1 \
+		|| _reboot "failed USB gadget configfs entry"
+
+	echo 0 > enable
+	rm lun/lun_0/${bstore} || _reboot "TCM gadget LUN symlink rm failed"
+	rmdir lun/lun_0/ || _reboot "failed TCM gadget configfs I/O"
+
+	cd /sys/kernel/config/target || _reboot "failed configfs I/O"
+	rmdir usb_gadget/naa.0123456789abcdef/tpgt_1 \
+		|| _reboot "failed TCM gadget configfs I/O"
+
+	rmdir usb_gadget/naa.0123456789abcdef \
+		|| _reboot "failed TCM gadget configfs I/O"
+
+	rmdir usb_gadget \
+		|| _reboot "failed TCM gadget configfs I/O"
+
+	cd /sys/kernel/config/usb_gadget \
+		|| _reboot "failed USB gadget configfs entry"
+
+	rmdir tcm/functions/tcm.0 || _reboot "failed USB gadget configfs I/O"
+
+	rmdir tcm || _reboot "failed USB gadget configfs I/O"
+}
 
 # parse start/stop parameter
 script_start=""
@@ -17,39 +123,33 @@ while [[ $# -gt 0 ]]; do
                 shift
                 ;;
         --start)
-		[ -z "$script_stop" ] || _fatal "invalid param: $param"
+		[ -z "$script_stop" ] || _reboot "invalid param: $param"
                 script_start="1"
                 ;;
         --stop)
-		[ -z "$script_start" ] || _fatal "invalid param: $param"
+		[ -z "$script_start" ] || _reboot "invalid param: $param"
                 script_stop="1"
                 ;;
         *)
-                _fatal "unknown parameter $param"
+                _reboot "unknown parameter $param"
                 ;;
         esac
         shift
 done
 
 if [ -z "$script_start" ] && [ -z "$script_stop" ]; then
-	_fatal "invalid parameters: either --stop or --start must be provided"
+	_reboot "invalid parameters: either --stop or --start must be provided"
 fi
 
 # ignore events for loopback
 [ "$net_dev" == "lo" ] && exit 0
 
-# turn off all LEDs except for blue
-if [ -f /sys/class/leds/cubietruck:blue:usr/trigger ]; then
-	echo none > /sys/class/leds/cubietruck:green:usr/trigger
-	echo none > /sys/class/leds/cubietruck:white:usr/trigger
-	echo none > /sys/class/leds/cubietruck:orange:usr/trigger
-	echo default-on > /sys/class/leds/cubietruck:blue:usr/trigger
-fi
+_led_set_blue_only
 
 cat /proc/mounts | grep configfs &> /dev/null
 if [ $? -ne 0 ]; then
 	mount -t configfs configfs /sys/kernel/config \
-		|| _fatal "failed to mount configfs"
+		|| _reboot "failed to mount configfs"
 fi
 
 _ini_parse "/etc/ceph/keyring" "client.${CEPH_USER}"
@@ -63,53 +163,43 @@ else
 	MON_ADDRESS="$mon_addr"
 fi
 
-echo -n "$MON_ADDRESS name=${CEPH_USER},secret=$key \
-	 $CEPH_RBD_POOL $CEPH_RBD_IMG -" > /sys/bus/rbd/add
+if [ -n "$script_start" ]; then
+	echo -n "$MON_ADDRESS name=${CEPH_USER},secret=$key \
+		 $CEPH_RBD_POOL $CEPH_RBD_IMG -" > /sys/bus/rbd/add
 
-udevadm settle || _fatal "udev settle failed"
+	udevadm settle || _reboot "udev settle failed"
 
-# assume rbdnamer udev rule sets up the /dev/rbd/$pool/$img symlink
-ceph_rbd_dev=/dev/rbd/${CEPH_RBD_POOL}/${CEPH_RBD_IMG}
-[ -b $ceph_rbd_dev ] || _fatal "$ceph_rbd_dev block device did not appear"
+	# assume rbdnamer udev rule sets up the /dev/rbd/$pool/$img symlink
+	ceph_rbd_dev=/dev/rbd/${CEPH_RBD_POOL}/${CEPH_RBD_IMG}
+	[ -b $ceph_rbd_dev ] || _reboot "$ceph_rbd_dev block device did not appear"
 
-cd /sys/kernel/config/usb_gadget/ || _fatal "usb_gadget not present"
+	# FIXME use valid serial number
+#	_tcm_iblock_create "${CEPH_RBD_POOL}-${CEPH_RBD_IMG}" \
+#			   "$ceph_rbd_dev" "fedcba9876543210"
 
-mkdir -p ceph || _fatal "failed to create gadget configfs node"
-cd ceph || _fatal "failed to enter gadget configfs node"
+	#FIXME tcm fails with non-super-speed USB driver:
+	# Can't claim all required eps
+#	_tcm_usb_expose "${CEPH_RBD_POOL}-${CEPH_RBD_IMG}" \
+	_usb_expose "$ceph_rbd_dev" \
+		"openSUSE" "Ceph USB" "9876543210fedcba" \
+		"0"	# removable media
 
-echo 0x1d6b > idVendor # Linux Foundation
-echo 0x0104 > idProduct # Multifunction Composite Gadget
-echo 0x0090 > bcdDevice # v0.9.0
+	_led_set_white_only
+else
+	[ -z "$script_stop" ] && _reboot "assert failed"
 
-mkdir -p strings/0x409 || _fatal "failed to create 0x409 descriptors"
-# FIXME should derive serialnumber from board uuid?
-echo "fedcba9876543210" > strings/0x409/serialnumber
-echo "openSUSE" > strings/0x409/manufacturer
-echo "Ceph USB Drive" > strings/0x409/product
+	# _tcm_usb_unexpose "${CEPH_RBD_POOL}-${CEPH_RBD_IMG}"
+	_usb_unexpose
 
-N="usb0"
-mkdir -p functions/mass_storage.$N || _fatal "failed to init mass storage gadget"
-echo 1 > functions/mass_storage.$N/stall
-echo 0 > functions/mass_storage.$N/lun.0/cdrom
-echo 0 > functions/mass_storage.$N/lun.0/ro
-echo 0 > functions/mass_storage.$N/lun.0/nofua
+#	_tcm_iblock_remove "${CEPH_RBD_POOL}-${CEPH_RBD_IMG}"
 
-echo "$ceph_rbd_dev" > functions/mass_storage.$N/lun.0/file \
-	|| _fatal "failed to use $ceph_rbd_dev as LUN backing device"
+	# assume rbdnamer udev rule sets up the /dev/rbd/$pool/$img symlink
+	ceph_rbd_dev=/dev/rbd/${CEPH_RBD_POOL}/${CEPH_RBD_IMG}
+	[ -b $ceph_rbd_dev ] || _reboot "$ceph_rbd_dev block device did not appear"
 
-C=1
-mkdir -p configs/c.$C/strings/0x409 \
-	|| _fatal "failed to create 0x409 configuration"
-echo "Config $C: mass-storage" > configs/c.$C/strings/0x409/configuration
-echo 250 > configs/c.$C/MaxPower
-ln -s functions/mass_storage.$N configs/c.$C/ \
-	|| _fatal "failed to create mass_storage configfs link"
+	ceph_dev=`readlink -e "$ceph_rbd_dev"`
 
-# FIXME: check for /sys/class/udc entry
-ls /sys/class/udc > UDC
-
-if [ -f /sys/class/leds/cubietruck:white:usr/trigger ]; then
-	# flag success via white LED
-	echo default-on > /sys/class/leds/cubietruck:white:usr/trigger
-	echo none > /sys/class/leds/cubietruck:blue:usr/trigger
+	_led_set_off
 fi
+
+exit 0
