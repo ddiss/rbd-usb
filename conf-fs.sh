@@ -146,6 +146,6 @@ rmdir "$tmp_dir" || _fatal "failed to remove $tmp_dir"
 set +x
 
 # rbd-usb.sh will reboot on failure, so that config state restarts
-/bin/rbd-usb.sh --start
+/bin/rbd-usb.sh --start || _reboot "rbd-usb.sh failed to start"
 
 # working config, generate a fast minimal rbd-usb initrd
