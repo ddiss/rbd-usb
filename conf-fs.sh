@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # import common functions and rbd-usb.conf config
 . /usr/lib/rbd-usb.env
@@ -104,6 +104,8 @@ function _usb_eject_wait() {
 	_led_set_blue_only "default-on"
 }
 
+set -x
+
 _led_set_blue_only
 
 cat /proc/mounts | grep configfs &> /dev/null
@@ -125,7 +127,11 @@ _zram_umount "zram0" "$tmp_dir"
 _usb_expose "/dev/zram0" "openSUSE" "Ceph USB Config" "fedcba9876543210" \
 	"1"	# removable
 
+set +x
+
 _usb_eject_wait
+
+set -x
 
 _usb_unexpose
 
@@ -134,6 +140,8 @@ _zram_mount "zram0" "$tmp_dir"
 _zram_fs_config_commit "$tmp_dir"
 
 _zram_umount "zram0" "$tmp_dir"
+
+set +x
 
 # rbd-usb.sh will reboot on failure, so that config state restarts
 /bin/rbd-usb.sh --start
