@@ -10,29 +10,29 @@ function _tcm_iblock_create() {
 
 	modprobe target_core_mod
 
-	cd /sys/kernel/config/target/core/ || _reboot "failed TCM configfs entry"
+	cd /sys/kernel/config/target/core/ || _fatal "failed TCM configfs entry"
 
-	mkdir -p iblock_0/${bstore} || _reboot "failed to create iblock node"
+	mkdir -p iblock_0/${bstore} || _fatal "failed to create iblock node"
 	echo "udev_path=${iblock_dev}" > iblock_0/${bstore}/control \
-		|| _reboot "failed to provision iblock device"
+		|| _fatal "failed to provision iblock device"
 	echo "${unit_serial}" > iblock_0/${bstore}/wwn/vpd_unit_serial \
-		|| _reboot "failed to set serial number"
+		|| _fatal "failed to set serial number"
 
-	echo "1" > iblock_0/${bstore}/enable || _reboot "failed to enable iblock"
+	echo "1" > iblock_0/${bstore}/enable || _fatal "failed to enable iblock"
 	# needs to be done after enable, as target_configure_device() resets it
 	#echo "openSUSE" > iblock_0/${bstore}/wwn/vendor_id \
-	#	|| _reboot "failed to set vendorid"
+	#	|| _fatal "failed to set vendorid"
 }
 
 function _tcm_iblock_remove() {
 	local bstore=$1
 
-	cd /sys/kernel/config/target/core/ || _reboot "failed TCM configfs entry"
+	cd /sys/kernel/config/target/core/ || _fatal "failed TCM configfs entry"
 
 	# `echo "0" > iblock_0/${bstore}/enable` not supported (or needed)
 
-	rmdir iblock_0/${bstore} || _reboot "failed to delete iblock node"
-	rmdir iblock_0 || _reboot "failed to delete iblock node"
+	rmdir iblock_0/${bstore} || _fatal "failed to delete iblock node"
+	rmdir iblock_0 || _fatal "failed to delete iblock node"
 }
 
 function _tcm_usb_expose() {
@@ -43,30 +43,30 @@ function _tcm_usb_expose() {
 	modprobe usb_f_tcm
 
 	cd /sys/kernel/config/usb_gadget \
-		|| _reboot "failed USB gadget configfs entry"
-	mkdir tcm || _reboot "failed USB gadget configfs I/O"
+		|| _fatal "failed USB gadget configfs entry"
+	mkdir tcm || _fatal "failed USB gadget configfs I/O"
 	cd tcm
-	mkdir functions/tcm.0 || _reboot "failed USB gadget configfs I/O"
+	mkdir functions/tcm.0 || _fatal "failed USB gadget configfs I/O"
 
-	cd /sys/kernel/config/target/ || _reboot "failed TCM configfs entry"
-	mkdir usb_gadget || _reboot "failed TCM gadget configfs I/O"
+	cd /sys/kernel/config/target/ || _fatal "failed TCM configfs entry"
+	mkdir usb_gadget || _fatal "failed TCM gadget configfs I/O"
 	cd usb_gadget
-	mkdir naa.0123456789abcdef || _reboot "failed TCM gadget configfs I/O"
+	mkdir naa.0123456789abcdef || _fatal "failed TCM gadget configfs I/O"
 	cd naa.0123456789abcdef
-	mkdir tpgt_1 || _reboot "failed TCM gadget configfs I/O"
+	mkdir tpgt_1 || _fatal "failed TCM gadget configfs I/O"
 	cd tpgt_1
 	echo naa.01234567890abcdef > nexus \
-		|| _reboot "failed TCM gadget configfs I/O"
-	echo 1 > enable || _reboot "failed TCM gadget configfs I/O"
+		|| _fatal "failed TCM gadget configfs I/O"
+	echo 1 > enable || _fatal "failed TCM gadget configfs I/O"
 
-	mkdir lun/lun_0 || _reboot "failed to provision TCM gadget LUN"
+	mkdir lun/lun_0 || _fatal "failed to provision TCM gadget LUN"
 
 	ln -s /sys/kernel/config/target/core/iblock_0/${bstore} \
-		lun/lun_0/${bstore} || _reboot "TCM gadget LUN symlink failed"
+		lun/lun_0/${bstore} || _fatal "TCM gadget LUN symlink failed"
 
 	cd /sys/kernel/config/usb_gadget/tcm \
-		|| _reboot "failed USB gadget configfs entry"
-	mkdir configs/c.1 || _reboot "failed USB gadget configfs I/O"
+		|| _fatal "failed USB gadget configfs entry"
+	mkdir configs/c.1 || _fatal "failed USB gadget configfs I/O"
 	ln -s functions/tcm.0 configs/c.1
 	echo "$vendor_id" > idVendor
 	echo "$product_id" > idProduct
@@ -79,34 +79,34 @@ function _tcm_usb_unexpose() {
 	local bstore=$1
 
 	cd /sys/kernel/config/usb_gadget/tcm \
-		|| _reboot "failed USB gadget configfs entry"
-	rm configs/c.1/tcm.0 || _reboot "failed USB gadget configfs entry"
-	rmdir configs/c.1 || _reboot "failed USB gadget configfs entry"
+		|| _fatal "failed USB gadget configfs entry"
+	rm configs/c.1/tcm.0 || _fatal "failed USB gadget configfs entry"
+	rmdir configs/c.1 || _fatal "failed USB gadget configfs entry"
 
 	# FIXME naa. as param
 	cd /sys/kernel/config/target/usb_gadget/naa.0123456789abcdef/tpgt_1 \
-		|| _reboot "failed USB gadget configfs entry"
+		|| _fatal "failed USB gadget configfs entry"
 
 	echo 0 > enable
-	rm lun/lun_0/${bstore} || _reboot "TCM gadget LUN symlink rm failed"
-	rmdir lun/lun_0/ || _reboot "failed TCM gadget configfs I/O"
+	rm lun/lun_0/${bstore} || _fatal "TCM gadget LUN symlink rm failed"
+	rmdir lun/lun_0/ || _fatal "failed TCM gadget configfs I/O"
 
-	cd /sys/kernel/config/target || _reboot "failed configfs I/O"
+	cd /sys/kernel/config/target || _fatal "failed configfs I/O"
 	rmdir usb_gadget/naa.0123456789abcdef/tpgt_1 \
-		|| _reboot "failed TCM gadget configfs I/O"
+		|| _fatal "failed TCM gadget configfs I/O"
 
 	rmdir usb_gadget/naa.0123456789abcdef \
-		|| _reboot "failed TCM gadget configfs I/O"
+		|| _fatal "failed TCM gadget configfs I/O"
 
 	rmdir usb_gadget \
-		|| _reboot "failed TCM gadget configfs I/O"
+		|| _fatal "failed TCM gadget configfs I/O"
 
 	cd /sys/kernel/config/usb_gadget \
-		|| _reboot "failed USB gadget configfs entry"
+		|| _fatal "failed USB gadget configfs entry"
 
-	rmdir tcm/functions/tcm.0 || _reboot "failed USB gadget configfs I/O"
+	rmdir tcm/functions/tcm.0 || _fatal "failed USB gadget configfs I/O"
 
-	rmdir tcm || _reboot "failed USB gadget configfs I/O"
+	rmdir tcm || _fatal "failed USB gadget configfs I/O"
 }
 
 # parse start/stop parameter
@@ -123,22 +123,22 @@ while [[ $# -gt 0 ]]; do
                 shift
                 ;;
         --start)
-		[ -z "$script_stop" ] || _reboot "invalid param: $param"
+		[ -z "$script_stop" ] || _fatal "invalid param: $param"
                 script_start="1"
                 ;;
         --stop)
-		[ -z "$script_start" ] || _reboot "invalid param: $param"
+		[ -z "$script_start" ] || _fatal "invalid param: $param"
                 script_stop="1"
                 ;;
         *)
-                _reboot "unknown parameter $param"
+                _fatal "unknown parameter $param"
                 ;;
         esac
         shift
 done
 
 if [ -z "$script_start" ] && [ -z "$script_stop" ]; then
-	_reboot "invalid parameters: either --stop or --start must be provided"
+	_fatal "invalid parameters: either --stop or --start must be provided"
 fi
 
 # ignore events for loopback
@@ -149,7 +149,7 @@ _led_set_blue_only
 cat /proc/mounts | grep configfs &> /dev/null
 if [ $? -ne 0 ]; then
 	mount -t configfs configfs /sys/kernel/config \
-		|| _reboot "failed to mount configfs"
+		|| _fatal "failed to mount configfs"
 fi
 
 _ini_parse "/etc/ceph/keyring" "client.${CEPH_USER}"
@@ -167,11 +167,11 @@ if [ -n "$script_start" ]; then
 	echo -n "$MON_ADDRESS name=${CEPH_USER},secret=$key \
 		 $CEPH_RBD_POOL $CEPH_RBD_IMG -" > /sys/bus/rbd/add
 
-	udevadm settle || _reboot "udev settle failed"
+	udevadm settle || _fatal "udev settle failed"
 
 	# assume rbdnamer udev rule sets up the /dev/rbd/$pool/$img symlink
 	ceph_rbd_dev=/dev/rbd/${CEPH_RBD_POOL}/${CEPH_RBD_IMG}
-	[ -b $ceph_rbd_dev ] || _reboot "$ceph_rbd_dev block device did not appear"
+	[ -b $ceph_rbd_dev ] || _fatal "$ceph_rbd_dev block device did not appear"
 
 	# FIXME use valid serial number
 #	_tcm_iblock_create "${CEPH_RBD_POOL}-${CEPH_RBD_IMG}" \
@@ -186,7 +186,7 @@ if [ -n "$script_start" ]; then
 
 	_led_set_white_only
 else
-	[ -z "$script_stop" ] && _reboot "assert failed"
+	[ -z "$script_stop" ] && _fatal "assert failed"
 
 	# _tcm_usb_unexpose "${CEPH_RBD_POOL}-${CEPH_RBD_IMG}"
 	_usb_unexpose
@@ -195,7 +195,7 @@ else
 
 	# assume rbdnamer udev rule sets up the /dev/rbd/$pool/$img symlink
 	ceph_rbd_dev=/dev/rbd/${CEPH_RBD_POOL}/${CEPH_RBD_IMG}
-	[ -b $ceph_rbd_dev ] || _reboot "$ceph_rbd_dev block device did not appear"
+	[ -b $ceph_rbd_dev ] || _fatal "$ceph_rbd_dev block device did not appear"
 
 	ceph_dev=`readlink -e "$ceph_rbd_dev"`
 
