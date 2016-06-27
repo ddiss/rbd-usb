@@ -1,0 +1,10 @@
+[Unit]
+Description=Ceph RBD USB gateway
+
+[Service]
+ExecStart=/bin/conf-fs.sh
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
