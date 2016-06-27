@@ -141,6 +141,8 @@ _zram_fs_config_commit "$tmp_dir"
 
 _zram_umount "zram0" "$tmp_dir"
 
+rmdir "$tmp_dir" || _fatal "failed to remove $tmp_dir"
+
 set +x
 
 # rbd-usb.sh will reboot on failure, so that config state restarts
