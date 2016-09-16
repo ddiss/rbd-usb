@@ -65,6 +65,11 @@ function _zram_fs_fill() {
 		cp /etc/rbd-usb.conf ${zram_mnt}/rbd-usb.conf \
 			|| _fatal "failed to copy to zram"
 	fi
+
+	if [ -f /usr/lib/rbd-usb-run-conf.flag ]; then
+		touch ${zram_mnt}/rbd-usb-run-conf.flag \
+			|| _fatal "failed to write to zram"
+	fi
 }
 
 function _zram_fs_config_commit() {
@@ -88,6 +93,14 @@ function _zram_fs_config_commit() {
 		cp ${zram_mnt}/rbd-usb.conf /etc/rbd-usb.conf.new \
 			|| _fatal "failed to copy from zram"
 		mv /etc/rbd-usb.conf.new /etc/rbd-usb.conf
+	fi
+
+	if [ -f ${zram_mnt}/rbd-usb-run-conf.flag ]; then
+		touch /usr/lib/rbd-usb-run-conf.flag \
+			|| _fatal "failed to modify FS"
+	else
+		rm /usr/lib/rbd-usb-run-conf.flag \
+			|| _fatal "failed to modify FS"
 	fi
 }
 
