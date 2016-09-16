@@ -109,6 +109,23 @@ function _tcm_usb_unexpose() {
 	rmdir tcm || _fatal "failed USB gadget configfs I/O"
 }
 
+function _mon_ping() {
+	# could be a hostname or IP:PORT
+	local mon_addr=$1
+	local mon_host=${mon_addr%:*}
+	local sec_off=0
+	local sec_tout=20
+
+	until ping -c 1 $mon_host || [ $sec_off -eq $sec_tout ]; do
+		sleep 1
+		$(( sec_off++ ))
+	done
+
+	[ $sec_off -eq $sec_tout ] && _fatal "failed to contact mon: $mon_host"
+
+	true
+}
+
 # parse start/stop parameter
 script_start=""
 script_stop=""
@@ -166,6 +183,9 @@ else
 fi
 
 if [ -n "$script_start" ]; then
+	# TODO drop this wait in favour of a systemd target
+	_mon_ping "$MON_ADDRESS" || _fatal "failed to ping mon"
+
 	echo -n "$MON_ADDRESS name=${CEPH_USER},secret=$key \
 		 $CEPH_RBD_POOL $CEPH_RBD_IMG -" > /sys/bus/rbd/add
 
