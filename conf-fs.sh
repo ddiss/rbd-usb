@@ -129,34 +129,39 @@ if [ $? -ne 0 ]; then
 		|| _fatal "failed to mount configfs"
 fi
 
-_zram_setup "zram0" 100M
+if [ -f /usr/lib/rbd-usb-run-conf.flag ]; then
 
-tmp_dir=`mktemp --directory "/tmp/rbd-usb-cfg.XXXXXXXXXX"` \
-	|| _fatal "failed to create tmpdir for mount"
-_zram_mount "zram0" "$tmp_dir"
+	_zram_setup "zram0" 100M
 
-_zram_fs_fill "$tmp_dir"
+	tmp_dir=`mktemp --directory "/tmp/rbd-usb-cfg.XXXXXXXXXX"` \
+		|| _fatal "failed to create tmpdir for mount"
+	_zram_mount "zram0" "$tmp_dir"
 
-_zram_umount "zram0" "$tmp_dir"
+	_zram_fs_fill "$tmp_dir"
 
-_usb_expose "/dev/zram0" "openSUSE" "Ceph USB Config" "fedcba9876543210" \
-	"1"	# removable
+	_zram_umount "zram0" "$tmp_dir"
 
-set +x
+	_usb_expose "/dev/zram0" "openSUSE" "Ceph USB Config" "fedcba9876543210" \
+		"1"	# removable
 
-_usb_eject_wait
+	set +x
 
-set -x
+	_usb_eject_wait
 
-_usb_unexpose
+	set -x
 
-_zram_mount "zram0" "$tmp_dir"
+	_usb_unexpose
 
-_zram_fs_config_commit "$tmp_dir"
+	_zram_mount "zram0" "$tmp_dir"
 
-_zram_umount "zram0" "$tmp_dir"
+	_zram_fs_config_commit "$tmp_dir"
 
-rmdir "$tmp_dir" || _fatal "failed to remove $tmp_dir"
+	_zram_umount "zram0" "$tmp_dir"
+
+	rmdir "$tmp_dir" || _fatal "failed to remove $tmp_dir"
+else
+	echo "rbd-usb-conf.flag not present - config skipped"
+fi
 
 set +x
 
