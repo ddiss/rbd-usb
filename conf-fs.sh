@@ -70,6 +70,8 @@ function _zram_fs_fill() {
 function _zram_fs_config_commit() {
 	local zram_mnt=$1
 
+	mkdir -p /etc/ceph/
+
 	if [ -f ${zram_mnt}/ceph.conf ]; then
 		cp ${zram_mnt}/ceph.conf /etc/ceph/ceph.conf.new \
 			|| _fatal "failed to copy from zram"
