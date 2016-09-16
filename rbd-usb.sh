@@ -146,6 +146,8 @@ fi
 
 _led_set_blue_only
 
+modprobe rbd
+
 cat /proc/mounts | grep configfs &> /dev/null
 if [ $? -ne 0 ]; then
 	mount -t configfs configfs /sys/kernel/config \
