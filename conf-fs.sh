@@ -70,6 +70,13 @@ function _zram_fs_fill() {
 		touch ${zram_mnt}/rbd-usb-run-conf.flag \
 			|| _fatal "failed to write to zram"
 	fi
+
+	if [ -f /var/log/rbd-usb.service.log ]; then
+		cp /var/log/rbd-usb.service.log ${zram_mnt}/ \
+			|| _fatal "failed to write to zram"
+		rm /var/log/rbd-usb.service.log \
+			|| echo "failed to remove old log"
+	fi
 }
 
 function _zram_fs_config_commit() {
