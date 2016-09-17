@@ -49,15 +49,17 @@ function _zram_umount() {
 function _zram_fs_fill() {
 	local zram_mnt=$1
 
+	mkdir ${zram_mnt}/ceph ||  _fatal "failed to create zram dir"
+
 	if [ -f /etc/ceph/ceph.conf ]; then
-		cp /etc/ceph/ceph.conf ${zram_mnt}/ceph.conf \
+		cp /etc/ceph/ceph.conf ${zram_mnt}/ceph/ceph.conf \
 			|| _fatal "failed to copy to zram"
 	fi
 
 	if [ -f /etc/ceph/keyring ]; then
 		# XXX should consider only accepting keyrings, but not exposing
 		# them?
-		cp /etc/ceph/keyring ${zram_mnt}/keyring \
+		cp /etc/ceph/keyring ${zram_mnt}/ceph/keyring \
 			|| _fatal "failed to copy to zram"
 	fi
 
@@ -84,14 +86,14 @@ function _zram_fs_config_commit() {
 
 	mkdir -p /etc/ceph/
 
-	if [ -f ${zram_mnt}/ceph.conf ]; then
-		cp ${zram_mnt}/ceph.conf /etc/ceph/ceph.conf.new \
+	if [ -f ${zram_mnt}/ceph/ceph.conf ]; then
+		cp ${zram_mnt}/ceph/ceph.conf /etc/ceph/ceph.conf.new \
 			|| _fatal "failed to copy from zram"
 		mv /etc/ceph/ceph.conf.new /etc/ceph/ceph.conf
 	fi
 
-	if [ -f ${zram_mnt}/keyring ]; then
-		cp ${zram_mnt}/keyring /etc/ceph/keyring.new \
+	if [ -f ${zram_mnt}/ceph/keyring ]; then
+		cp ${zram_mnt}/ceph/keyring /etc/ceph/keyring.new \
 			|| _fatal "failed to copy from zram"
 		mv /etc/ceph/keyring.new /etc/ceph/keyring
 	fi
