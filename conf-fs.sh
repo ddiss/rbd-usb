@@ -63,8 +63,8 @@ function _zram_fs_fill() {
 			|| _fatal "failed to copy to zram"
 	fi
 
-	if [ -f /etc/rbd-usb.conf ]; then
-		cp /etc/rbd-usb.conf ${zram_mnt}/rbd-usb.conf \
+	if [ -f /etc/rbd-usb/rbd-usb.conf ]; then
+		cp /etc/rbd-usb/rbd-usb.conf ${zram_mnt}/rbd-usb.conf \
 			|| _fatal "failed to copy to zram"
 	fi
 
@@ -85,6 +85,7 @@ function _zram_fs_config_commit() {
 	local zram_mnt=$1
 
 	mkdir -p /etc/ceph/
+	mkdir -p /etc/rbd-usb/
 
 	if [ -f ${zram_mnt}/ceph/ceph.conf ]; then
 		cp ${zram_mnt}/ceph/ceph.conf /etc/ceph/ceph.conf.new \
@@ -99,9 +100,9 @@ function _zram_fs_config_commit() {
 	fi
 
 	if [ -f ${zram_mnt}/rbd-usb.conf ]; then
-		cp ${zram_mnt}/rbd-usb.conf /etc/rbd-usb.conf.new \
+		cp ${zram_mnt}/rbd-usb.conf /etc/rbd-usb/rbd-usb.conf.new \
 			|| _fatal "failed to copy from zram"
-		mv /etc/rbd-usb.conf.new /etc/rbd-usb.conf
+		mv /etc/rbd-usb/rbd-usb.conf.new /etc/rbd-usb/rbd-usb.conf
 	fi
 
 	if [ -f ${zram_mnt}/rbd-usb-run-conf.flag ]; then
