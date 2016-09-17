@@ -81,6 +81,8 @@ function _zram_fs_fill() {
 	fi
 
 	mkdir ${zram_mnt}/dm-crypt || _fatal "failed to create zram dir"
+	echo "Place a LUKS key file \"luks.key\" in this directory to have" \
+	     "it used for encryption" > ${zram_mnt}/dm-crypt/readme.txt
 
 	if [ -f /etc/rbd-usb/luks.key ]; then
 		# XXX should consider only accepting keys, but not exposing

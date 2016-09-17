@@ -195,14 +195,18 @@ if [ -n "$script_start" ]; then
 	ceph_rbd_dev=/dev/rbd/${CEPH_RBD_POOL}/${CEPH_RBD_IMG}
 	[ -b $ceph_rbd_dev ] || _fatal "$ceph_rbd_dev block device did not appear"
 
-	# FIXME use valid serial number
-#	_tcm_iblock_create "${CEPH_RBD_POOL}-${CEPH_RBD_IMG}" \
-#			   "$ceph_rbd_dev" "fedcba9876543210"
+	if [ -f /etc/rbd-usb/luks.key ]; then
+		# user provided a LUKS key, so expose dm-crypt mapped device
+		_luks_open /etc/rbd-usb/luks.key $ceph_rbd_dev \
+				${CEPH_RBD_POOL}-${CEPH_RBD_IMG}-luks \
+			|| _fatal "failed to open $ceph_rbd_dev as LUKS device"
+		usb_dev="/dev/dm/${CEPH_RBD_POOL}-${CEPH_RBD_IMG}-luks"
+	else
+		# no LUKS key - expose regular RBD device via USB
+		usb_dev="$ceph_rbd_dev"
+	fi
 
-	#FIXME tcm fails with non-super-speed USB driver:
-	# Can't claim all required eps
-#	_tcm_usb_expose "${CEPH_RBD_POOL}-${CEPH_RBD_IMG}" \
-	_usb_expose "$ceph_rbd_dev" \
+	_usb_expose "$usb_dev" \
 		"openSUSE" "Ceph USB" "9876543210fedcba" \
 		"0"	# removable media
 
