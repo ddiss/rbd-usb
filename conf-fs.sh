@@ -109,6 +109,8 @@ function _zram_fs_config_commit() {
 		rm /usr/lib/rbd-usb-run-conf.flag \
 			|| _fatal "failed to modify FS"
 	fi
+
+	sync || _fatal "failed to sync FS changes"
 }
 
 function _usb_eject_wait() {
