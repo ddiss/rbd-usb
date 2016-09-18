@@ -118,7 +118,7 @@ function _mon_ping() {
 
 	until ping -c 1 $mon_host || [ $sec_off -eq $sec_tout ]; do
 		sleep 1
-		$(( sec_off++ ))
+		(( sec_off++ ))
 	done
 
 	[ $sec_off -eq $sec_tout ] && _fatal "failed to contact mon: $mon_host"
