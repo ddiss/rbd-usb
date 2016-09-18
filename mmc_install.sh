@@ -21,8 +21,9 @@ ceph_dir=$2
 [ -d "$mmc_root" ] || _fatal "mmc root dir does not exist"
 [ -d "${mmc_root}/bin" ] || _fatal "mmc bin dir does not exist"
 [ -d "${mmc_root}/etc" ] || _fatal "mmc etc dir does not exist"
+mkdir -p ${mmc_root}/etc/rbd-usb/ || _fatal "failed to create dir"
 
-cp rbd-usb.conf ${mmc_root}/etc/ || _fatal "failed to install script"
+cp rbd-usb.conf ${mmc_root}/etc/rbd-usb/ || _fatal "failed to install script"
 cp rbd-usb.env ${mmc_root}/usr/lib/ || _fatal "failed to install script"
 cp conf-fs.sh ${mmc_root}/bin/ || _fatal "failed to install script"
 cp rbd-usb.sh ${mmc_root}/bin/ || _fatal "failed to install script"
@@ -32,7 +33,7 @@ cp rbd-usb.service ${mmc_root}/lib/systemd/system/ \
 touch ${mmc_root}/usr/lib/rbd-usb-run-conf.flag || _fatal "touch failed"
 if [ -z "$ceph_dir" ]; then
 	echo "<ceph dir> not set - ceph-rbdnamer and udev rule not installed"
-	return
+	exit 0
 fi
 
 cp ${ceph_dir}/udev/50-rbd.rules ${mmc_root}/lib/udev/rules.d \
