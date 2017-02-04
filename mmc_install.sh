@@ -27,8 +27,15 @@ cp rbd-usb.conf ${mmc_root}/etc/rbd-usb/ || _fatal "failed to install script"
 cp rbd-usb.env ${mmc_root}/usr/lib/ || _fatal "failed to install script"
 cp conf-fs.sh ${mmc_root}/bin/ || _fatal "failed to install script"
 cp rbd-usb.sh ${mmc_root}/bin/ || _fatal "failed to install script"
-cp rbd-usb.service ${mmc_root}/lib/systemd/system/ \
-	|| _fatal "failed to install script"
+if [ -d ${mmc_root}/lib/systemd/system/ ]; then
+	cp rbd-usb.service ${mmc_root}/lib/systemd/system/ \
+		|| _fatal "failed to install script"
+elif [ -d ${mmc_root}/usr/lib/systemd/system/ ]; then
+	cp rbd-usb.service ${mmc_root}/usr/lib/systemd/system/ \
+		|| _fatal "failed to install script"
+else
+	_fatal "unknown systemd path"
+fi
 # ensure that the configuration LU is exposed and processed
 touch ${mmc_root}/usr/lib/rbd-usb-run-conf.flag || _fatal "touch failed"
 if [ -z "$ceph_dir" ]; then
