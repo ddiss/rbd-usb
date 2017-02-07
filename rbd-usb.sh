@@ -200,7 +200,7 @@ if [ -n "$script_start" ]; then
 		_luks_open /etc/rbd-usb/luks.key $ceph_rbd_dev \
 				${CEPH_RBD_POOL}-${CEPH_RBD_IMG}-luks \
 			|| _fatal "failed to open $ceph_rbd_dev as LUKS device"
-		usb_dev="/dev/dm/${CEPH_RBD_POOL}-${CEPH_RBD_IMG}-luks"
+		usb_dev="/dev/mapper/${CEPH_RBD_POOL}-${CEPH_RBD_IMG}-luks"
 	else
 		# no LUKS key - expose regular RBD device via USB
 		usb_dev="$ceph_rbd_dev"
